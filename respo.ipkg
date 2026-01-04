@@ -1,0 +1,7 @@
+package respo
+
+version = 0.1
+sourcedir = "src"
+modules = Respo, Respo.Dom, Respo.Diff, Respo.Style, Respo.StateTree, Respo.Patcher, Example
+executable = respo
+main = Example

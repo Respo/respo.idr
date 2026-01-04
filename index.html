@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Idris2 Respo Example</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #f7f9fc;
+        color: #1f2933;
+      }
+      #app {
+        min-height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      (function () {
+        window.respoActionQueue = [];
+        window.respoActionWaiters = [];
+        function deliverIfNeeded() {
+          if (
+            window.respoActionQueue.length === 0 ||
+            window.respoActionWaiters.length === 0
+          ) {
+            return;
+          }
+          var waiter = window.respoActionWaiters.shift();
+          if (typeof waiter === "function") {
+            waiter();
+          }
+        }
+        window.respoPushAction = function (action, payload) {
+          var entry =
+            payload && payload.length > 0 ? action + ":" + payload : action;
+          window.respoActionQueue.push(entry);
+          deliverIfNeeded();
+        };
+        window.respoTakeAction = function () {
+          if (
+            !window.respoActionQueue ||
+            window.respoActionQueue.length === 0
+          ) {
+            return "";
+          }
+          return window.respoActionQueue.shift();
+        };
+        window.respoRegisterActionWaiter = function (resume) {
+          if (typeof resume !== "function") {
+            return;
+          }
+          if (window.respoActionQueue && window.respoActionQueue.length > 0) {
+            if (typeof queueMicrotask === "function") {
+              queueMicrotask(resume);
+            } else {
+              setTimeout(resume, 0);
+            }
+          } else {
+            window.respoActionWaiters.push(resume);
+          }
+        };
+        document.addEventListener("click", function (event) {
+          var node = event.target.closest("[data-action]");
+          if (!node) {
+            return;
+          }
+          var action = node.getAttribute("data-action");
+          if (!action) {
+            return;
+          }
+          var payload = node.getAttribute("data-payload") || "";
+          window.respoPushAction(action, payload);
+        });
+      })();
+    </script>
+    <!-- Idris build emits build/exec/respo, served here via .js symlink for proper MIME type -->
+    <script src="build/exec/respo.js"></script>
+  </body>
+</html>
