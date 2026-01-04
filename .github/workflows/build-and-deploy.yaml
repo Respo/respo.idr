@@ -16,15 +16,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Idris2
+      - name: Cache Idris2
+        uses: actions/cache@v3
+        id: cache-idris2
+        with:
+          path: |
+            ~/.idris2
+            /usr/local/bin/idris2
+            /usr/local/bin/idris2_app
+          key: idris2-0.8.0-${{ runner.os }}
+
+      - name: Install dependencies
+        if: steps.cache-idris2.outputs.cache-hit != 'true'
         run: |
-          wget https://github.com/idris-lang/Idris2/releases/download/v0.8.0/idris2-0.8.0-x86_64-linux.tar.gz
-          tar -xzf idris2-0.8.0-x86_64-linux.tar.gz
-          sudo cp -r idris2-0.8.0/* /usr/local/
+          sudo apt-get update
+          sudo apt-get install -y chezscheme libgmp-dev
+
+      - name: Install Idris2
+        if: steps.cache-idris2.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/idris-lang/Idris2.git
+          cd Idris2
+          git checkout v0.8.0
+          make bootstrap SCHEME=scheme
+          sudo make install PREFIX=/usr/local
+          cd ..
+          rm -rf Idris2
+
+      - name: Verify Idris2
+        run: |
+          export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
           idris2 --version
 
       - name: Build project
         run: |
+          export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
           idris2 --codegen javascript --build respo.ipkg
 
       - name: Prepare distribution
