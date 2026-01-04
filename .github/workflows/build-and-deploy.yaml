@@ -10,16 +10,18 @@ jobs:
   build_and_deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
-    container:
-      image: snazzybucket/idris2:latest
     permissions:
       contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify Idris2 installation
-        run: idris2 --version
+      - name: Install Idris2
+        run: |
+          wget https://github.com/idris-lang/Idris2/releases/download/v0.8.0/idris2-0.8.0-x86_64-linux.tar.gz
+          tar -xzf idris2-0.8.0-x86_64-linux.tar.gz
+          sudo cp -r idris2-0.8.0/* /usr/local/
+          idris2 --version
 
       - name: Build project
         run: |
