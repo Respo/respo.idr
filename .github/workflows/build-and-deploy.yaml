@@ -24,7 +24,9 @@ jobs:
             ~/.idris2
             /usr/local/bin/idris2
             /usr/local/bin/idris2_app
-          key: idris2-0.8.0-${{ runner.os }}
+            /usr/local/share/idris2-0.8.0
+            /usr/local/lib/idris2-0.8.0
+          key: idris2-0.8.0-full-${{ runner.os }}
 
       - name: Install dependencies
         if: steps.cache-idris2.outputs.cache-hit != 'true'
