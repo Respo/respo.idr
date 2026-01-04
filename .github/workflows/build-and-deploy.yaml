@@ -40,6 +40,7 @@ jobs:
           git checkout v0.8.0
           make bootstrap SCHEME=scheme
           sudo make install PREFIX=/usr/local
+          sudo make install-api PREFIX=/usr/local
           cd ..
           rm -rf Idris2
 
@@ -47,6 +48,8 @@ jobs:
         run: |
           export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
           idris2 --version
+          # Check for support files
+          find ~/.idris2 /usr/local -name "support.js" 2>/dev/null || echo "Warning: support.js not found"
 
       - name: Build project
         run: |
