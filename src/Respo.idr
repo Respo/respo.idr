@@ -2,6 +2,7 @@ module Respo
 
 import Data.List
 import Respo.Effect
+import Respo.Dom
 
 %default total
 
@@ -144,3 +145,29 @@ withEffect node _ = node
 public export
 withEffectData : Eq a => VNode -> RespoEffectWithData a -> VNode
 withEffectData node eff = withEffect node (wrapEffect eff)
+
+-- Build DOM tree from VNode using Idris2 logic
+export partial
+buildDomTree : VNode -> String -> IO ()
+buildDomTree tree elementId = do
+  container <- primIO $ prim_getElementById elementId
+  primIO $ prim_clearElement container
+  node <- buildNode tree
+  primIO $ prim_appendChild container node
+  where
+    buildNode : VNode -> IO AnyPtr
+    buildNode (Text str) = primIO $ prim_createTextNode str
+    buildNode (Component comp) = buildNode comp.tree
+    buildNode (Element el) = do
+      element <- primIO $ prim_createElement el.tag
+      -- Set attributes
+      traverse_ (\(k, v) => primIO $ prim_setAttribute element k v) el.attrs
+      -- Set styles as a single style attribute
+      let styleStr = concat $ intersperse ";" $ map (\(k, v) => k ++ ":" ++ v) el.style
+      when (length el.style > 0) $
+        primIO $ prim_setAttribute element "style" styleStr
+      -- Build and append children
+      for_ el.children $ \child => do
+        childNode <- buildNode child.node
+        primIO $ prim_appendChild element childNode
+      pure element

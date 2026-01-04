@@ -1,6 +1,7 @@
 module Respo.Dom
 
 import System
+import Data.List
 
 %default total
 
@@ -176,107 +177,27 @@ export
 waitForNextAction : IO () -> IO ()
 waitForNextAction resume = primIO $ prim_waitForNextAction resume
 
--- Build real DOM tree from VNode
-buildDomTreeCode : String
-buildDomTreeCode = """
-javascript:lambda:(tree, elementId) => {
-  const buildNode = (vnode) => {
-    // Handle null/undefined
-    if (!vnode) {
-      return document.createTextNode('');
-    }
-
-    // Text node (constructor index 2)
-    if (vnode.h === 2) {
-      return document.createTextNode(vnode.a1 || '');
-    }
-
-    // Component node (constructor index 1) - render its tree
-    if (vnode.h === 1) {
-      const comp = vnode.a1;
-      if (comp && comp.a3) {
-        return buildNode(comp.a3);
-      }
-      return document.createTextNode('');
-    }
-
-    // Element node (constructor index 0)
-    if (vnode.h === 0) {
-      const el = vnode.a1;
-      if (!el) {
-        return document.createTextNode('');
-      }
-
-      const tag = el.a1;
-      if (!tag) {
-        return document.createTextNode('');
-      }
-
-      const element = document.createElement(tag);
-
-      // Helper to iterate Idris2 List
-      // List Cons has a1 (head) and a2 (tail)
-      // Empty list is when a1 is undefined or a2 is missing
-      const listToArray = (list) => {
-        const result = [];
-        let current = list;
-        while (current && (current.h === 0 || (current.a1 && current.a2 !== undefined))) {
-          result.push(current.a1);
-          current = current.a2;
-        }
-        return result;
-      };
-
-      // Set attributes
-      const attrs = listToArray(el.a2 || {});
-      for (const pair of attrs) {
-        if (pair && pair.a1 && pair.a2) {
-          element.setAttribute(pair.a1, pair.a2);
-        }
-      }
-
-      // Set styles
-      const styles = listToArray(el.a3 || {});
-      const styleStrings = [];
-      for (const pair of styles) {
-        if (pair && pair.a1 && pair.a2) {
-          styleStrings.push(pair.a1 + ':' + pair.a2);
-        }
-      }
-      if (styleStrings.length > 0) {
-        element.setAttribute('style', styleStrings.join(';'));
-      }
-
-      // Build and append children
-      const children = listToArray(el.a5 || {});
-      for (const child of children) {
-        if (child && child.a2) {
-          element.appendChild(buildNode(child.a2));
-        }
-      }
-
-      return element;
-    }
-
-    // Fallback
-    return document.createTextNode('');
-  };
-
-  const container = document.getElementById(elementId);
-  if (!container) {
-    console.error('Container not found:', elementId);
-    return;
-  }
-
-  const node = buildNode(tree);
-  container.innerHTML = '';
-  container.appendChild(node);
-}
-"""
-
-%foreign buildDomTreeCode
-prim_buildDomTree : (tree : AnyPtr) -> String -> PrimIO ()
+-- Basic DOM FFI primitives
+export
+%foreign "javascript:lambda:(tag) => document.createElement(tag)"
+prim_createElement : String -> PrimIO AnyPtr
 
 export
-buildDomTree : a -> String -> IO ()
-buildDomTree tree elementId = primIO $ prim_buildDomTree (believe_me tree) elementId
+%foreign "javascript:lambda:(text) => document.createTextNode(text)"
+prim_createTextNode : String -> PrimIO AnyPtr
+
+export
+%foreign "javascript:lambda:(parent, child) => { parent.appendChild(child); }"
+prim_appendChild : AnyPtr -> AnyPtr -> PrimIO ()
+
+export
+%foreign "javascript:lambda:(element, key, value) => { element.setAttribute(key, value); }"
+prim_setAttribute : AnyPtr -> String -> String -> PrimIO ()
+
+export
+%foreign "javascript:lambda:(elementId) => document.getElementById(elementId)"
+prim_getElementById : String -> PrimIO AnyPtr
+
+export
+%foreign "javascript:lambda:(element) => { element.innerHTML = ''; }"
+prim_clearElement : AnyPtr -> PrimIO ()
