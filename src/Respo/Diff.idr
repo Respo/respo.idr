@@ -1,7 +1,9 @@
 module Respo.Diff
 
 import Data.List
+import Data.SortedSet
 import Respo
+import Respo.Effect
 
 %default total
 
@@ -13,6 +15,7 @@ data Patch
   | SetText (List Int) String
   | InsertChild (List Int) Int VNode
   | RemoveChild (List Int) Int
+  | RunEffect (List Int) EffectType (List AnyEffect) (SortedSet Int)
 
 childNode : Child -> VNode
 childNode (MkChild _ node) = node
@@ -59,6 +62,12 @@ mutual
   diffAt : List Int -> VNode -> VNode -> List Patch
   diffAt path (Text a) (Text b) =
     if a == b then [] else [SetText path b]
+  diffAt path (Component oldComp) (Component newComp) =
+    if oldComp.name /= newComp.name then [Replace path (Component newComp)]
+    else
+      let treePatches = diffAt path oldComp.tree newComp.tree
+          effectPatches = diffEffects path oldComp.effects newComp.effects
+      in effectPatches ++ treePatches
   diffAt path (Element oldEl) (Element newEl) =
     if oldEl.tag /= newEl.tag then [Replace path (Element newEl)]
     else
@@ -67,6 +76,34 @@ mutual
           childPatches = diffChildren path oldEl.children newEl.children
       in attrPatches ++ stylePatches ++ childPatches
   diffAt path _ newNode = [Replace path newNode]
+
+  -- Compare effects and find which ones are unchanged (can be skipped)
+  findSkippedEffects : List AnyEffect -> List AnyEffect -> SortedSet Int
+  findSkippedEffects oldEffects newEffects = go 0 oldEffects newEffects empty
+    where
+      go : Int -> List AnyEffect -> List AnyEffect -> SortedSet Int -> SortedSet Int
+      go _ [] _ acc = acc
+      go _ _ [] acc = acc
+      go idx (oldEff :: oldRest) (newEff :: newRest) acc =
+        if oldEff == newEff
+          then go (idx + 1) oldRest newRest (insert idx acc)
+          else go (idx + 1) oldRest newRest acc
+
+  diffEffects : List Int -> List AnyEffect -> List AnyEffect -> List Patch
+  diffEffects path oldEffects newEffects =
+    if oldEffects == newEffects then []
+    else if null oldEffects && not (null newEffects)
+         then [RunEffect path Mounted newEffects empty]
+         else if not (null oldEffects) && null newEffects
+              then [RunEffect path BeforeUnmount oldEffects empty]
+              else
+                let skipped = findSkippedEffects oldEffects newEffects
+                    skippedCount = cast {to=Int} (length (SortedSet.toList skipped))
+                    totalCount = cast {to=Int} (length newEffects)
+                in if skippedCount == totalCount
+                   then []  -- all effects unchanged, skip entirely
+                   else [RunEffect path BeforeUpdate newEffects skipped,
+                         RunEffect path Updated newEffects skipped]
 
   diffAttrs : List Int -> List (String, String) -> List (String, String) -> List Patch
   diffAttrs path oldAttrs newAttrs =

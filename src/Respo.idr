@@ -1,6 +1,7 @@
 module Respo
 
 import Data.List
+import Respo.Effect
 
 %default total
 
@@ -8,6 +9,7 @@ mutual
   public export
   data VNode
     = Element RespoElement
+    | Component RespoComponent
     | Text String
 
   public export
@@ -24,6 +26,13 @@ mutual
     style : List (String, String)
     listeners : List (String, String)
     children : List Child
+
+  public export
+  record RespoComponent where
+    constructor MkRespoComponent
+    name : String
+    effects : List AnyEffect
+    tree : VNode
 
 indexChildren : Int -> List VNode -> List Child
 indexChildren _ [] = []
@@ -90,6 +99,7 @@ mergeAttrs attrs styles = attrs ++ [("style", renderStyles styles)]
 public export covering
 render : VNode -> String
 render (Text s) = s
+render (Component comp) = render comp.tree
 render (Element el) =
   let mergedAttrs = mergeAttrs el.attrs el.style
       openTag = "<" ++ el.tag ++ renderAttrs mergedAttrs ++ ">"
@@ -100,3 +110,37 @@ render (Element el) =
     renderChildren : List Child -> String
     renderChildren [] = ""
     renderChildren (MkChild _ node :: rest) = render node ++ renderChildren rest
+
+-- Create a component with effects (generic)
+public export
+comp : String -> List AnyEffect -> VNode -> VNode
+comp name effects tree = Component (MkRespoComponent name effects tree)
+
+-- Create a component with typed effects
+public export
+compWith : Eq a => String -> List (RespoEffectWithData a) -> VNode -> VNode
+compWith name effects tree =
+  Component (MkRespoComponent name (map wrapEffect effects) tree)
+
+-- Create a component with simple effects
+public export
+compSimple : String -> List RespoEffect -> VNode -> VNode
+compSimple name effects tree =
+  Component (MkRespoComponent name (map toAnyEffect effects) tree)
+
+-- Create a component without effects
+public export
+compEmpty : String -> VNode -> VNode
+compEmpty name tree = Component (MkRespoComponent name [] tree)
+
+-- Add an effect to a component
+public export
+withEffect : VNode -> AnyEffect -> VNode
+withEffect (Component comp) eff =
+  Component (MkRespoComponent comp.name (comp.effects ++ [eff]) comp.tree)
+withEffect node _ = node
+
+-- Add a typed effect to a component
+public export
+withEffectData : Eq a => VNode -> RespoEffectWithData a -> VNode
+withEffectData node eff = withEffect node (wrapEffect eff)

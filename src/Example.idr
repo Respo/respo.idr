@@ -8,6 +8,8 @@ import Respo.Diff
 import Respo.Patcher
 import Respo.Style
 import Respo.StateTree
+import Respo.Effect
+import Respo.EffectCollector
 import System
 
 %default total
@@ -17,6 +19,10 @@ record Todo where
   constructor MkTodo
   text : String
   done : Bool
+
+public export
+Eq Todo where
+  (MkTodo t1 d1) == (MkTodo t2 d2) = t1 == t2 && d1 == d2
 
 public export
 data UserAction
@@ -152,6 +158,30 @@ actionLabel AddTodo = "add-todo"
 actionLabel (ToggleTodo idx) = "toggle:" ++ show idx
 actionLabel ClearDone = "clear-done"
 
+-- Effect example: log when counter is mounted and updated
+counterEffect : RespoEffect
+counterEffect = effectMountedAndUpdated "counter-effect"
+  (\elementId => log ("Counter mounted at: " ++ elementId))
+  (\elementId => log ("Counter updated at: " ++ elementId))
+
+-- Example with structured data: effect that carries counter value
+counterEffectWithCount : Int -> RespoEffectWithData Int
+counterEffectWithCount count =
+  effectMountedAndUpdatedWith
+    ("counter-with-data-" ++ show count)  -- ID changes with count
+    count                                   -- Data carried with effect
+    (\c, elementId => log ("Counter mounted with value: " ++ show c ++ " at: " ++ elementId))
+    (\c, elementId => log ("Counter updated to: " ++ show c ++ " at: " ++ elementId))
+
+-- Example with structured Todo data (not used yet, for demonstration)
+todoEffect : Todo -> RespoEffectWithData Todo
+todoEffect todo =
+  effectUpdatedWith
+    ("todo-" ++ todo.text ++ "-" ++ show todo.done)
+    todo
+    (\t, elementId =>
+      log ("Todo effect - text: " ++ t.text ++ ", done: " ++ show t.done ++ ", at: " ++ elementId))
+
 renderCounterCard : Store -> VNode
 renderCounterCard store =
   let status = readBranchState store.states ["status"]
@@ -160,7 +190,13 @@ renderCounterCard store =
       incrementBtn = withStyle (el "button" [("data-action", "increment")] [ text "+1" ]) uiButton
       toolbar = withStyle (el "div" [] [incrementBtn]) (finish (gap 12 (display "flex" style)))
       statusLine = withStyle (el "p" [] [ text status ]) (finish (color "#4b5563" style))
-  in withStyle (el "div" [] [header, value, toolbar, statusLine]) uiPanel
+      content = withStyle (el "div" [] [header, value, toolbar, statusLine]) uiPanel
+      -- Demo: Mix simple effect with structured data effect
+      -- The simple effect logs when counter is mounted/updated
+      -- The data effect carries the count value and logs it
+      simpleEff = toAnyEffect counterEffect
+      dataEff = wrapEffect (counterEffectWithCount store.count)
+  in comp "counter-card" [simpleEff, dataEff] content
 
 renderTodoItem : Int -> Todo -> VNode
 renderTodoItem idx todo =
@@ -256,12 +292,38 @@ loop rootId prev store = do
       log ("Actions: " ++ show (map actionLabel actions))
       loop rootId nextVNode nextStore
 
+pathToString : List Int -> String
+pathToString [] = ""
+pathToString (x :: xs) = foldl (\acc, seg => acc ++ "." ++ seg) (show x) (map show xs)
+
+covering
+runEffectList : String -> List AnyEffect -> IO ()
+runEffectList _ [] = pure ()
+runEffectList elId (eff :: rest) = do
+  runAnyEffect eff Mounted elId  -- Use runAnyEffect for polymorphic effects
+  runEffectList elId rest
+
+covering
+runAllMountedEffects : String -> List (List Int, List AnyEffect) -> IO ()
+runAllMountedEffects _ [] = pure ()
+runAllMountedEffects rootId ((path, effects) :: rest) = do
+  let elementId = rootId ++ "-" ++ pathToString path
+  runEffectList elementId effects
+  runAllMountedEffects rootId rest
+
+covering
+runMountedEffects : String -> VNode -> IO ()
+runMountedEffects rootId vnode = do
+  let effectList = collectEffects [] vnode
+  runAllMountedEffects rootId effectList
+
 covering
 main : IO ()
 main = do
   let rootId = "app"
       store0 = initialStore
       vnode0 = renderApp store0
-  setInnerHTML rootId (render vnode0)
+  buildDomTree vnode0 rootId
   log "Mounted Respo demo"
+  runMountedEffects rootId vnode0
   loop rootId vnode0 store0
