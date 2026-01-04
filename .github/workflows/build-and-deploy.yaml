@@ -49,27 +49,15 @@ jobs:
       - name: Verify Idris2
         run: |
           export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
+          export IDRIS2_PREFIX=/usr/local/idris2-0.8.0
           idris2 --version
-          # Find where support files are installed
-          echo "Searching for support files..."
-          find /usr/local -name "support.js" 2>/dev/null || true
-          find ~ -name "support.js" 2>/dev/null || true
-          # Create target directory
-          mkdir -p ~/.idris2/idris2-0.8.0/support/js
-          # Copy support files from all possible locations
-          for dir in /usr/local/share/idris2-0.8.0 /usr/local/idris2-0.8.0 /usr/local/lib/idris2-0.8.0; do
-            if [ -d "$dir/support" ]; then
-              echo "Copying from $dir/support"
-              cp -rv "$dir/support"/* ~/.idris2/idris2-0.8.0/support/ || true
-            fi
-          done
-          # Verify
-          echo "Contents of ~/.idris2/idris2-0.8.0/support/js:"
-          ls -la ~/.idris2/idris2-0.8.0/support/js/ || echo "ERROR: js support directory not found!"
+          echo "IDRIS2_PREFIX set to: $IDRIS2_PREFIX"
+          ls -la $IDRIS2_PREFIX/support/js/
 
       - name: Build project
         run: |
           export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
+          export IDRIS2_PREFIX=/usr/local/idris2-0.8.0
           idris2 --codegen javascript --build respo.ipkg
 
       - name: Prepare distribution
