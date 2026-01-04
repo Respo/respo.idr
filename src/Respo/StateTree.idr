@@ -51,7 +51,7 @@ record RespoUpdateState where
   value : Maybe String
   snapshot : Maybe String
 
-public export
+export partial
 setIn : RespoStateTree -> RespoUpdateState -> RespoStateTree
 setIn tree (MkRespoUpdateState [] newValue newSnapshot) =
   MkRespoStateTree tree.cursor newValue newSnapshot tree.branches
@@ -80,7 +80,7 @@ readState tree =
         Right value => value
         Left _ => defaultState
 
-public export
+export partial
 writeState : RespoState state => RespoStateTree -> List String -> state -> RespoStateTree
 writeState tree cursor st =
   let encoded = encodeState st
