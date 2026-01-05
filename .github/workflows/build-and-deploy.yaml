@@ -49,15 +49,13 @@ jobs:
       - name: Verify Idris2
         run: |
           export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
-          export IDRIS2_PREFIX=/usr/local/idris2-0.8.0
           idris2 --version
-          echo "IDRIS2_PREFIX set to: $IDRIS2_PREFIX"
-          ls -la $IDRIS2_PREFIX/support/js/
+          echo "Idris2 installed at: $(which idris2)"
+          ls -la /usr/local/share/idris2-0.8.0/support/js/ || echo "JS support directory not found"
 
       - name: Build project
         run: |
           export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
-          export IDRIS2_PREFIX=/usr/local/idris2-0.8.0
           idris2 --codegen javascript --build respo.ipkg
 
       - name: Prepare distribution
