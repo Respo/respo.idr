@@ -1,5 +1,9 @@
 # Idris2 Respo
 
+> **⚠️ Experimental Project Notice**
+>
+> This is an experimental project generated with AI assistance for learning and exploration purposes. It demonstrates concepts from [rs-respo](https://github.com/Respo/rs.respo) ported to Idris2, but is **not production-ready** and should not be used in real-world applications.
+
 Idris2 implementation of Respo, a virtual DOM library with effects system. This is a port of the core ideas from [rs-respo](https://github.com/Respo/rs.respo).
 
 ## Features
