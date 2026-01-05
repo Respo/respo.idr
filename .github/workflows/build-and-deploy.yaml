@@ -12,52 +12,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # Use idris2-pack container which has Idris2 pre-installed with all dependencies
+    container: ghcr.io/stefan-hoeck/idris2-pack:latest
+    env:
+      PACK_DIR: /root/.pack
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Idris2
-        uses: actions/cache@v3
-        id: cache-idris2
-        with:
-          path: |
-            ~/.idris2
-            /usr/local/bin/idris2
-            /usr/local/bin/idris2_app
-            /usr/local/share/idris2-0.8.0
-            /usr/local/lib/idris2-0.8.0
-          key: idris2-0.8.0-full-${{ runner.os }}
-
-      - name: Install dependencies
-        if: steps.cache-idris2.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chezscheme libgmp-dev
-
-      - name: Install Idris2
-        if: steps.cache-idris2.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/idris-lang/Idris2.git
-          cd Idris2
-          git checkout v0.8.0
-          make bootstrap SCHEME=scheme
-          sudo make install PREFIX=/usr/local
-          sudo make install-api PREFIX=/usr/local
-          cd ..
-          rm -rf Idris2
-
       - name: Verify Idris2
         run: |
-          export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
-          export IDRIS2_PREFIX=/usr/local/idris2-0.8.0
           idris2 --version
-          echo "IDRIS2_PREFIX set to: $IDRIS2_PREFIX"
-          ls -la $IDRIS2_PREFIX/support/js/
+          echo "Idris2 installed at: $(which idris2)"
 
       - name: Build project
         run: |
-          export PATH="/usr/local/bin:$HOME/.idris2/bin:$PATH"
-          export IDRIS2_PREFIX=/usr/local/idris2-0.8.0
           idris2 --codegen javascript --build respo.ipkg
 
       - name: Prepare distribution
@@ -69,7 +38,6 @@ jobs:
           ls -la dist/
 
       - name: Deploy to server
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: deploy
         uses: Pendect/action-rsyncer@v2.0.0
         env:
@@ -82,5 +50,4 @@ jobs:
           dest: "rsync-user@tiye.me:/web-assets/repo/${{ github.repository }}"
 
       - name: Display status from deploy
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: echo "${{ steps.deploy.outputs.status }}"
