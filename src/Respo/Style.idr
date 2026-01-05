@@ -119,45 +119,48 @@ finishAll builders =
 public export
 uiGlobal : List (String, String)
 uiGlobal =
-  finish
-    ( cursor "default"
-    ( fontFamily "Inter, -apple-system, BlinkMacSystemFont, sans-serif"
-    ( color "#1f2933"
-    ( background "#f7f9fc"
-    ( padding 32 style)))))
+  style
+    |> padding 32
+    |> background "#f7f9fc"
+    |> color "#1f2933"
+    |> fontFamily "Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+    |> cursor "default"
+    |> finish
 
 public export
 uiButton : List (String, String)
 uiButton =
-  finish
-    ( cursor "pointer"
-    ( border "none"
-    ( borderRadius 8
-    ( padding4 (10, 18, 10, 18)
-    ( background "#2563eb"
-    ( color "#ffffff"
-    ( fontSize 15
-    ( fontWeight "600" style))))))))
+  style
+    |> fontWeight "600"
+    |> fontSize 15
+    |> color "#ffffff"
+    |> background "#2563eb"
+    |> padding4 (10, 18, 10, 18)
+    |> borderRadius 8
+    |> border "none"
+    |> cursor "pointer"
+    |> finish
 
 public export
 uiButtonSecondary : List (String, String)
 uiButtonSecondary =
-  finish
-    ( cursor "pointer"
-    ( border "1px solid #d1d5db"
-    ( borderRadius 8
-    ( padding4 (9, 16, 9, 16)
-    ( background "#edf2f7"
-    ( color "#1f2933"
-    ( fontSize 15 style)))))))
+  style
+    |> fontSize 15
+    |> color "#1f2933"
+    |> background "#edf2f7"
+    |> padding4 (9, 16, 9, 16)
+    |> borderRadius 8
+    |> border "1px solid #d1d5db"
+    |> cursor "pointer"
+    |> finish
 
 public export
 uiPanel : List (String, String)
 uiPanel =
-  finish
-    ( borderRadius 16
-    ( padding 24
-    ( background "#ffffff"
-    ( border "1px solid #e5e7eb"
-    ( color "#1f2933"
-    style)))))
+  style
+    |> color "#1f2933"
+    |> border "1px solid #e5e7eb"
+    |> background "#ffffff"
+    |> padding 24
+    |> borderRadius 16
+    |> finish
